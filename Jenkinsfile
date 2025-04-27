@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub') // Replace with your Jenkins credentials ID
         DOCKER_IMAGE = 'ahmed416/newtest' // Replace with your Docker Hub username and image name
+        IMAGE_TAG = 'v1.0'
     }
 
     stages {
@@ -15,18 +15,16 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh 'docker build -t $DOCKER_IMAGE .'
-                }
+                sh 'docker build -t $DOCKER_IMAGE:$IMAGE_TAG .'
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
                     sh '''
-                    echo $DOCKER_HUB_CREDENTIALS_PSW | docker login -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin
-                    docker push $DOCKER_IMAGE
+                    echo $DOCKERHUB_PASS | docker login -u $DOCKERHUB_USER --password-stdin
+                    docker push $DOCKER_IMAGE:$IMAGE_TAG
                     '''
                 }
             }
@@ -34,13 +32,11 @@ pipeline {
 
         stage('Run Docker Container') {
             steps {
-                script {
-                    sh '''
-                    docker stop my-container || true
-                    docker rm my-container || true
-                    docker run -d -p 4000:80 --name newtest $DOCKER_IMAGE
-                    '''
-                }
+                sh '''
+                docker stop newtest || true
+                docker rm newtest || true
+                docker run -d -p 4000:80 --name newtest $DOCKER_IMAGE:$IMAGE_TAG
+                '''
             }
         }
     }
